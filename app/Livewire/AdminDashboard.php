@@ -13,6 +13,7 @@ class AdminDashboard extends Component
     public string $kabupaten = '';
     public string $kecamatan = '';
     public string $kelurahan = '';
+    public $filtersOpen = false;
 
     public function updatedProvinsi(): void
     {
@@ -31,6 +32,8 @@ class AdminDashboard extends Component
     {
         $this->kelurahan = '';
     }
+
+
 
     /**
      * Dispatch event ke JS agar chart di-refresh dengan data terbaru.

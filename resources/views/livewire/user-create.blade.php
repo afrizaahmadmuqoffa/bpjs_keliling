@@ -1,4 +1,4 @@
-<div class="w-full">
+<div class="space-y-8 px-4 py-14 lg:px-10 lg:py-10">
 
     {{-- HEADER --}}
     <div class="flex items-center justify-between mb-8">

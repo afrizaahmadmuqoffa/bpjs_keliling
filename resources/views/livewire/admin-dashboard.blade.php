@@ -1,4 +1,4 @@
-<div class="space-y-8">
+<div class="space-y-8 px-4 py-14 lg:px-10 lg:py-10">
 
     {{-- HEADER --}}
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -47,93 +47,79 @@
         </div>
     </div>
 
+    {{-- TOMBOL FILTER MOBILE/TABLET - DILETAKKAN DI ATAS GRID --}}
+    <div class="lg:hidden flex items-center justify-between gap-3">
+        <button wire:click="$set('filtersOpen', true)" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
+            <i class="fas fa-filter text-primary"></i> Filter Wilayah
+        </button>
+        @if($provinsi || $kabupaten || $kecamatan || $kelurahan)
+            <span class="text-[10px] font-medium px-2.5 py-1 bg-primary/10 text-primary rounded-full whitespace-nowrap">
+                {{ count(array_filter([$provinsi, $kabupaten, $kecamatan, $kelurahan])) }} aktif
+            </span>
+        @endif
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-        {{-- FILTER WILAYAH --}}
-        <div class="lg:col-span-1 space-y-6">
+        {{-- FILTER WILAYAH - DESKTOP ONLY --}}
+        <div class="hidden lg:block lg:col-span-1 space-y-6">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                 <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <i class="fas fa-filter text-primary text-xs"></i> Filter Wilayah
                 </h4>
-
                 <div class="space-y-4">
-
                     {{-- PROVINSI --}}
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Provinsi</label>
-                        <select
-                            wire:model.live="provinsi"
-                            class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
-                        >
+                        <select wire:model.live="provinsi" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
                             <option value="">Semua Provinsi</option>
                             @foreach($provinsiList as $prov)
                                 <option value="{{ $prov }}">{{ ucwords($prov) }}</option>
                             @endforeach
                         </select>
                     </div>
-
                     {{-- KABUPATEN --}}
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Kabupaten</label>
-                        <select
-                            wire:model.live="kabupaten"
-                            class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
-                            @disabled(!$provinsi)
-                        >
+                        <select wire:model.live="kabupaten" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm" @disabled(!$provinsi)>
                             <option value="">Semua Kabupaten</option>
                             @foreach($kabupatenList as $kab)
                                 <option value="{{ $kab }}">{{ ucfirst($kab) }}</option>
                             @endforeach
                         </select>
                     </div>
-
                     {{-- KECAMATAN --}}
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Kecamatan</label>
-                        <select
-                            wire:model.live="kecamatan"
-                            class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
-                            @disabled(!$kabupaten)
-                        >
+                        <select wire:model.live="kecamatan" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm" @disabled(!$kabupaten)>
                             <option value="">Semua Kecamatan</option>
                             @foreach($kecamatanList as $kec)
                                 <option value="{{ $kec }}">{{ ucwords($kec) }}</option>
                             @endforeach
                         </select>
                     </div>
-
                     {{-- KELURAHAN --}}
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Kelurahan</label>
-                        <select
-                            wire:model.live="kelurahan"
-                            class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm"
-                            @disabled(!$kecamatan)
-                        >
+                        <select wire:model.live="kelurahan" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm" @disabled(!$kecamatan)>
                             <option value="">Semua Kelurahan</option>
                             @foreach($kelurahanList as $kel)
                                 <option value="{{ $kel }}">{{ ucwords($kel) }}</option>
                             @endforeach
                         </select>
                     </div>
-
                     {{-- RESET --}}
                     @if($provinsi || $kabupaten || $kecamatan || $kelurahan)
-                        <button
-                            wire:click="$set('provinsi', ''); $set('kabupaten', ''); $set('kecamatan', ''); $set('kelurahan', '')"
-                            class="w-full text-xs text-slate-400 hover:text-red-500 transition-colors text-center py-1"
-                        >
+                        <button wire:click="$set('provinsi', ''); $set('kabupaten', ''); $set('kecamatan', ''); $set('kelurahan', '')" class="w-full text-xs text-slate-400 hover:text-red-500 transition-colors text-center py-1">
                             <i class="fas fa-times-circle mr-1"></i> Reset Filter
                         </button>
                     @endif
-
                 </div>
             </div>
         </div>
 
         {{-- CHART --}}
         <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
-
             {{-- SEGMENTASI --}}
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h4 class="font-bold text-slate-800 mb-6">Segmentasi Peserta</h4>
@@ -141,7 +127,6 @@
                     <canvas id="segmentasiChart"></canvas>
                 </div>
             </div>
-
             {{-- LAYANAN --}}
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h4 class="font-bold text-slate-800 mb-6">Top Layanan</h4>
@@ -149,7 +134,6 @@
                     <canvas id="layananChart"></canvas>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -228,21 +212,87 @@
         </div>
     </div>
 
+    {{-- MODAL FILTER - MOBILE/TABLET --}}
+    @if($filtersOpen ?? false)
+        <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm lg:hidden" wire:click.self="$set('filtersOpen', false)">
+            <div class="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[90vh] overflow-y-auto animate-slide-up" wire:click.stop>
+                {{-- Header Modal --}}
+                <div class="sticky top-0 bg-white px-5 py-4 border-b border-slate-100 flex items-center justify-between rounded-t-2xl z-10">
+                    <h4 class="font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-filter text-primary text-xs"></i> Filter Wilayah
+                    </h4>
+                    <button wire:click="$set('filtersOpen', false)" class="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                {{-- Form Filter --}}
+                <div class="p-5 space-y-4">
+                    {{-- PROVINSI --}}
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Provinsi</label>
+                        <select wire:model.live="provinsi" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
+                            <option value="">Semua Provinsi</option>
+                            @foreach($provinsiList as $prov)
+                                <option value="{{ $prov }}">{{ ucwords($prov) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    {{-- KABUPATEN --}}
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Kabupaten</label>
+                        <select wire:model.live="kabupaten" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm" @disabled(!$provinsi)>
+                            <option value="">Semua Kabupaten</option>
+                            @foreach($kabupatenList as $kab)
+                                <option value="{{ $kab }}">{{ ucfirst($kab) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    {{-- KECAMATAN --}}
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Kecamatan</label>
+                        <select wire:model.live="kecamatan" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm" @disabled(!$kabupaten)>
+                            <option value="">Semua Kecamatan</option>
+                            @foreach($kecamatanList as $kec)
+                                <option value="{{ $kec }}">{{ ucwords($kec) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    {{-- KELURAHAN --}}
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Kelurahan</label>
+                        <select wire:model.live="kelurahan" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm" @disabled(!$kecamatan)>
+                            <option value="">Semua Kelurahan</option>
+                            @foreach($kelurahanList as $kel)
+                                <option value="{{ $kel }}">{{ ucwords($kel) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    {{-- Actions --}}
+                    <div class="flex gap-3 pt-2">
+                        <button wire:click="$set('provinsi', ''); $set('kabupaten', ''); $set('kecamatan', ''); $set('kelurahan', '')" class="flex-1 text-xs font-medium px-4 py-2.5 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+                            <i class="fas fa-undo-alt mr-1"></i> Reset
+                        </button>
+                        <button wire:click="$set('filtersOpen', false)" class="flex-1 text-xs font-medium px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
 </div>
 
 {{-- Chart.js --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
     let segmentChart = null;
     let layananChart = null;
 
     function initCharts(sLabels, sData, lLabels, lData) {
-        // Hancurkan chart lama jika ada
         if (segmentChart) segmentChart.destroy();
         if (layananChart) layananChart.destroy();
 
-        // Pastikan canvas masih ada di DOM
         const segmentCanvas = document.getElementById('segmentasiChart');
         const layananCanvas = document.getElementById('layananChart');
 
@@ -290,19 +340,27 @@
         });
     }
 
-    // Inisialisasi pertama kali
     document.addEventListener('DOMContentLoaded', () => {
         const segmentLabels = @json($segments->map(fn($s) => $s->segment->nama ?? 'Unknown'));
         const segmentData   = @json($segments->pluck('total'));
         const serviceLabels = @json($services->map(fn($s) => $s->service->nama ?? 'Unknown'));
         const serviceData   = @json($services->pluck('total'));
-
         initCharts(segmentLabels, segmentData, serviceLabels, serviceData);
     });
 
-    // Update chart saat Livewire dispatch event
     window.addEventListener('chartDataUpdated', (event) => {
         const { segmentLabels, segmentData, serviceLabels, serviceData } = event.detail[0];
         initCharts(segmentLabels, segmentData, serviceLabels, serviceData);
     });
 </script>
+
+{{-- CSS Animation --}}
+<style>
+    @keyframes slide-up {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-slide-up {
+        animation: slide-up 0.3s ease-out;
+    }
+</style>

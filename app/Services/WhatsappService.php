@@ -18,11 +18,6 @@ class WhatsAppService
             'message' => $message,
         ]);
 
-        // if (!$response->successful()) {
-        //     throw new \Exception('Wablas error: ' . $response->body());
-        // }
-
-        // return $response->json();
     }
 
     private static function formatPhone($phone)

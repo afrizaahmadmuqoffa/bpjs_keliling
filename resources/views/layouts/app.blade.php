@@ -41,31 +41,64 @@
             background-color: #01a850 !important;
             border-radius: 0.5rem;
         }
+
+        /* Mobile Sidebar Toggle */
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        #sidebar.mobile-hidden {
+            transform: translateX(-100%);
+        }
+
+        @media (min-width: 1024px) {
+            #sidebar {
+                transform: none !important;
+            }
+        }
+
+        /* Smooth fade-in */
+        body {
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        body.loaded {
+            opacity: 1;
+        }
     </style>
 </head>
 
-<body class="bg-lightBg font-sans text-slate-700 opacity-0 transition-opacity duration-300"
-    onload="document.body.classList.remove('opacity-0')">
+<body class="bg-lightBg font-sans text-slate-700" onload="document.body.classList.add('loaded')">
+
+    {{-- MOBILE SIDEBAR TOGGLE --}}
+    @auth
+    <button id="mobileToggle" class="lg:hidden fixed top-4 left-4 z-30 bg-primary text-white p-3 rounded-lg shadow-lg">
+        <i class="fas fa-bars"></i>
+    </button>
+    @endauth
 
     <div class="flex min-h-screen">
 
         {{-- SIDEBAR --}}
         @auth
-        <aside class="fixed top-0 left-0 h-screen w-64 bg-primary text-white flex flex-col shadow-xl z-20">
+        <aside id="sidebar" class="mobile-hidden fixed top-0 left-0 h-screen w-64 bg-primary text-white flex flex-col shadow-xl z-20 overflow-y-auto">
 
             <!-- LOGO -->
-            <div class="p-6 flex items-center gap-3">
-                <img src="{{ asset('logo_bpjs.png') }}" class="h-[50px] w-[50px] object-contain">
-                <span class="font-bold text-lg">BPJS Keliling</span>
+            <div class="p-4 lg:p-6 flex items-center justify-between lg:justify-start gap-3">
+                <div class="flex items-center gap-3">
+                    <img src="{{ asset('logo_bpjs.png') }}" class="h-10 w-10 lg:h-[50px] lg:w-[50px] object-contain">
+                    <span class="font-bold text-base lg:text-lg sm:inline">BPJS Keliling</span>
+                </div>
             </div>
 
             <!-- MENU -->
-            <nav class="flex-1 px-4 py-4 space-y-2">
+            <nav class="flex-1 px-3 lg:px-4 py-4 space-y-1 lg:space-y-2 overflow-y-auto">
 
                 {{-- DASHBOARD — admin & super_admin --}}
                 @if(in_array(auth()->user()->role, ['admin', 'super_admin']))
                 <a href="{{ route('dashboard') }}"
-                    class="sidebar-item {{ request()->routeIs('*.dashboard') ? 'sidebar-active' : '' }} flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white">
+                    class="sidebar-item {{ request()->routeIs('*.dashboard') ? 'sidebar-active' : '' }} flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white rounded-lg">
                     <i class="fas fa-chart-line w-5"></i>
                     <span class="text-sm">Dashboard</span>
                 </a>
@@ -73,7 +106,7 @@
 
                 {{-- DATA PESERTA — semua role --}}
                 <a href="{{ route('participants.index') }}"
-                    class="sidebar-item {{ request()->routeIs('participants.*') && !request()->routeIs('participants.create') ? 'sidebar-active' : '' }} flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white">
+                    class="sidebar-item {{ request()->routeIs('participants.*') && !request()->routeIs('participants.create') ? 'sidebar-active' : '' }} flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white rounded-lg">
                     <i class="fas fa-id-card w-5"></i>
                     <span class="text-sm">Data Peserta</span>
                 </a>
@@ -81,7 +114,7 @@
                 {{-- MANAJEMEN PENGGUNA — super_admin only --}}
                 @if(auth()->user()->role === 'super_admin')
                 <a href="{{ route('users.index') }}"
-                    class="sidebar-item {{ request()->routeIs('users.*') ? 'sidebar-active' : '' }} flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white">
+                    class="sidebar-item {{ request()->routeIs('users.*') ? 'sidebar-active' : '' }} flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white rounded-lg">
                     <i class="fas fa-user-shield w-5"></i>
                     <span class="text-sm">Manajemen Pengguna</span>
                 </a>
@@ -89,47 +122,50 @@
 
             </nav>
 
-        </aside>
-        @endauth
+            {{-- Overlay for mobile --}}
+            <div id="sidebarOverlay" class="lg:hidden fixed inset-0 bg-black/50 z-[-1] hidden"></div>
 
-        {{-- MAIN --}}
-        <div class="flex-1 flex flex-col min-w-0 {{ auth()->check() ? 'ml-64' : '' }}">
+            {{-- USER PROFILE + LOGOUT --}}
+            <div class="p-4 border-t border-white/10">
 
-            {{-- NAVBAR --}}
-            @auth
-            <header class="h-16 bg-white border-b flex items-center justify-between px-8 sticky top-0 z-10">
-
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
+                <!-- Profile -->
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-9 h-9 bg-secondary text-white rounded-full flex items-center justify-center text-sm font-bold">
                         {{ strtoupper(substr(auth()->user()->nama, 0, 1)) }}
                     </div>
-                    <div>
-                        <p class="text-sm text-secondary font-semibold uppercase">
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold truncate">
                             {{ auth()->user()->nama }}
                         </p>
-                        <p class="text-[10px] text-slate-400 uppercase tracking-wider">
+                        <p class="text-xs text-white/70 uppercase">
                             {{ match(auth()->user()->role) {
-                                'super_admin' => 'Super Admin',
-                                'admin'       => 'Admin',
-                                'pic'         => 'PIC',
-                                default       => auth()->user()->role,
-                            } }}
+                    'super_admin' => 'Super Admin',
+                    'admin'       => 'Admin',
+                    'pic'         => 'PIC',
+                    default       => auth()->user()->role,
+                } }}
                         </p>
                     </div>
                 </div>
 
+                <!-- Logout -->
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button class="flex items-center gap-2 px-4 py-2 text-red-500 hover:bg-red-100 rounded-lg text-sm">
+                    <button class="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-sm">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </button>
                 </form>
 
-            </header>
-            @endauth
+            </div>
+
+        </aside>
+        @endauth
+
+        {{-- MAIN CONTENT --}}
+        <div class="flex-1 flex flex-col min-w-0 lg:ml-64">
 
             {{-- CONTENT --}}
-            <main class="p-8">
+            <main class="p-3 lg:p-6">
                 <div class="max-w-7xl mx-auto">
                     @yield('content')
                 </div>
@@ -138,6 +174,51 @@
         </div>
 
     </div>
+
+    {{-- Mobile Sidebar Script --}}
+    @auth
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('mobileToggle');
+            const close = document.getElementById('sidebarClose');
+            const overlay = document.getElementById('sidebarOverlay');
+
+            function toggleSidebar(show) {
+                if (show) {
+                    // Sidebar muncul
+                    sidebar.classList.remove('mobile-hidden');
+                    overlay.classList.remove('hidden');
+
+                    // ❗ UI control
+                    toggle.classList.add('hidden'); // hide hamburger
+                    close.classList.remove('hidden'); // show close
+
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    // Sidebar hilang
+                    sidebar.classList.add('mobile-hidden');
+                    overlay.classList.add('hidden');
+
+                    // ❗ UI control
+                    toggle.classList.remove('hidden'); // show hamburger
+                    close.classList.add('hidden'); // hide close
+
+                    document.body.style.overflow = '';
+                }
+            }
+
+            toggle?.addEventListener('click', () => toggleSidebar(true));
+            close?.addEventListener('click', () => toggleSidebar(false));
+            overlay?.addEventListener('click', () => toggleSidebar(false));
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') toggleSidebar(false);
+            });
+        });
+    </script>
+    @endauth
+
     @livewireScripts
 </body>
 

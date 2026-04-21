@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\ParticipantModel;
 use App\Models\RegionModel;
+use App\Services\RegionFuzzyMatcher;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\RateLimiter;
@@ -46,6 +47,38 @@ class ParticipantCreate extends Component
     public int $importSuccess = 0;
     public int $importSkipped = 0;
     public array $importLogs = [];
+
+    // ── Fuzzy Correction Review State ───────────────────────────────
+    // Apakah sedang menampilkan panel review koreksi
+    public bool $showFuzzyReview = false;
+
+    /**
+     * Daftar baris yang membutuhkan review koreksi wilayah.
+     * Setiap item:
+     * [
+     *   'row'        => int,           // nomor baris Excel
+     *   'rowData'    => array,         // data baris lengkap (sudah divalidasi non-wilayah)
+     *   'original'   => array,         // wilayah asli dari Excel
+     *   'suggestion' => array,         // saran koreksi dari fuzzy matcher
+     *   'scores'     => array,         // skor similarity per field
+     *   'changed'    => array,         // field yang berubah
+     *   'decision'   => string|null,   // 'approve' | 'reject' | null (belum diputuskan)
+     * ]
+     */
+    public array $fuzzyReviewItems = [];
+
+    /**
+     * Baris yang sudah valid (tidak perlu koreksi), disimpan sementara
+     * sampai user selesai review fuzzy items.
+     * Setiap item: ['row' => int, 'data' => array (siap insert)]
+     */
+    public array $pendingValidRows = [];
+
+    /**
+     * Baris yang gagal validasi non-wilayah (langsung skip, tidak perlu review).
+     * Setiap item: ['row' => int, 'errors' => array]
+     */
+    public array $pendingErrorRows = [];
 
     public function mount()
     {
@@ -329,6 +362,11 @@ class ParticipantCreate extends Component
         ]);
     }
 
+    /**
+     * Tahap 1: Parse Excel, pisahkan baris valid / perlu koreksi / error.
+     * Jika ada baris yang perlu koreksi → tampilkan review panel.
+     * Jika tidak ada → langsung commit.
+     */
     public function runImport()
     {
         $key = 'import-participant:' . Auth::id() . '|' . request()->ip();
@@ -345,42 +383,313 @@ class ParticipantCreate extends Component
         $this->resetImportState();
         $this->importing = true;
 
+        $fuzzyMatcher      = new RegionFuzzyMatcher();
+        $fuzzyReviewItems  = [];
+        $pendingValidRows  = [];
+        $pendingErrorRows  = [];
+        $total             = 0;
+
         try {
             $rowNumber = 1;
-            (new FastExcel)->import($this->importFile->getRealPath(), function ($row) use (&$rowNumber) {
+            (new FastExcel)->import($this->importFile->getRealPath(), function ($row) use (
+                &$rowNumber, &$total, &$fuzzyReviewItems, &$pendingValidRows, &$pendingErrorRows, $fuzzyMatcher
+            ) {
                 $row = collect($row)->mapWithKeys(fn($v, $k) => [strtolower(trim($k)) => $v])->toArray();
-                $this->importTotal++;
+                $total++;
                 $currentRow = $rowNumber++;
 
-                $validation = $this->validateParticipantData($row, $currentRow);
-
-                if (!$validation['valid']) {
-                    $this->importSkipped++;
-                    $this->logImport('error', $currentRow, "Baris {$currentRow}: " . implode('; ', $validation['errors']));
+                // Validasi field non-wilayah terlebih dahulu
+                $nonRegionValidation = $this->validateNonRegionData($row, $currentRow);
+                if (!$nonRegionValidation['valid']) {
+                    $pendingErrorRows[] = [
+                        'row'    => $currentRow,
+                        'errors' => $nonRegionValidation['errors'],
+                    ];
                     return;
                 }
 
-                ParticipantModel::create($validation['data']);
-                $this->importSuccess++;
-                $this->logImport('success', $currentRow, "Baris {$currentRow}: {$validation['data']['nama']} — berhasil diimpor");
-            });
+                $provinsi  = strtolower(trim($row['provinsi'] ?? ''));
+                $kabupaten = strtolower(trim($row['kabupaten'] ?? ''));
+                $kecamatan = strtolower(trim($row['kecamatan'] ?? ''));
+                $kelurahan = strtolower(trim($row['kelurahan'] ?? ''));
 
-            $this->logImport('info', 0, "Selesai — {$this->importSuccess} berhasil, {$this->importSkipped} dilewati dari total {$this->importTotal} baris.");
+                // Coba exact match + fuzzy match
+                $matchResult = $fuzzyMatcher->tryCorrect($provinsi, $kabupaten, $kecamatan, $kelurahan);
+
+                if ($matchResult['found']) {
+                    // Exact match → langsung masuk pending valid
+                    $pendingValidRows[] = [
+                        'row'  => $currentRow,
+                        'data' => array_merge($nonRegionValidation['data'], [
+                            'region_id' => $matchResult['region']->id,
+                        ]),
+                    ];
+                } elseif ($matchResult['correctable']) {
+                    // Fuzzy match → perlu review user
+                    $fuzzyReviewItems[] = [
+                        'row'        => $currentRow,
+                        'rowData'    => $nonRegionValidation['data'],
+                        'original'   => $matchResult['original'],
+                        'suggestion' => $matchResult['suggestion'],
+                        'scores'     => $matchResult['scores'],
+                        'changed'    => $matchResult['changed'],
+                        'decision'   => null,
+                    ];
+                } else {
+                    // Tidak ditemukan sama sekali
+                    $pendingErrorRows[] = [
+                        'row'    => $currentRow,
+                        'errors' => ["Wilayah tidak ditemukan: {$provinsi} / {$kabupaten} / {$kecamatan} / {$kelurahan}"],
+                    ];
+                }
+            });
         } catch (\Throwable $e) {
-            $this->logImport('error', 0, 'Import gagal: ' . $e->getMessage());
+            $this->logImport('error', 0, 'Gagal membaca file: ' . $e->getMessage());
+            $this->importing = false;
+            return;
         }
 
-        $this->importing = false;
-        $this->importDone = true;
-        $this->importFile = null;
+        $this->importTotal      = $total;
+        $this->pendingValidRows = $pendingValidRows;
+        $this->pendingErrorRows = $pendingErrorRows;
+        $this->importing        = false;
+
+        if (!empty($fuzzyReviewItems)) {
+            // Ada baris yang perlu review → tampilkan panel review
+            $this->fuzzyReviewItems = $fuzzyReviewItems;
+            $this->showFuzzyReview  = true;
+        } else {
+            // Tidak ada yang perlu review → langsung commit
+            $this->commitImport();
+        }
+    }
+
+    /**
+     * User menyetujui koreksi untuk satu baris.
+     */
+    public function approveFuzzyCorrection(int $index): void
+    {
+        if (!isset($this->fuzzyReviewItems[$index])) return;
+        $this->fuzzyReviewItems[$index]['decision'] = 'approve';
+    }
+
+    /**
+     * User menolak koreksi untuk satu baris (baris akan di-skip).
+     */
+    public function rejectFuzzyCorrection(int $index): void
+    {
+        if (!isset($this->fuzzyReviewItems[$index])) return;
+        $this->fuzzyReviewItems[$index]['decision'] = 'reject';
+    }
+
+    /**
+     * User menyetujui semua koreksi sekaligus.
+     */
+    public function approveAllFuzzyCorrections(): void
+    {
+        foreach ($this->fuzzyReviewItems as $i => $item) {
+            if ($item['decision'] === null) {
+                $this->fuzzyReviewItems[$i]['decision'] = 'approve';
+            }
+        }
+    }
+
+    /**
+     * User menolak semua koreksi sekaligus.
+     */
+    public function rejectAllFuzzyCorrections(): void
+    {
+        foreach ($this->fuzzyReviewItems as $i => $item) {
+            if ($item['decision'] === null) {
+                $this->fuzzyReviewItems[$i]['decision'] = 'reject';
+            }
+        }
+    }
+
+    /**
+     * Cek apakah semua fuzzy items sudah diberi keputusan.
+     */
+    public function allFuzzyDecided(): bool
+    {
+        foreach ($this->fuzzyReviewItems as $item) {
+            if ($item['decision'] === null) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Tahap 2: Setelah user selesai review, commit semua data ke database.
+     */
+    public function commitImport(): void
+    {
+        $fuzzyMatcher = new RegionFuzzyMatcher();
+
+        // Proses fuzzy review items yang sudah diberi keputusan
+        foreach ($this->fuzzyReviewItems as $item) {
+            $row = $item['row'];
+
+            if ($item['decision'] === 'approve') {
+                // Resolve region dari suggestion yang disetujui
+                $sug    = $item['suggestion'];
+                $region = $fuzzyMatcher->resolveRegion(
+                    $sug['provinsi'],
+                    $sug['kabupaten'],
+                    $sug['kecamatan'],
+                    $sug['kelurahan']
+                );
+
+                if ($region) {
+                    $this->pendingValidRows[] = [
+                        'row'  => $row,
+                        'data' => array_merge($item['rowData'], ['region_id' => $region->id]),
+                    ];
+                } else {
+                    $this->pendingErrorRows[] = [
+                        'row'    => $row,
+                        'errors' => ['Region tidak ditemukan setelah koreksi.'],
+                    ];
+                }
+            } else {
+                // Rejected atau belum diputuskan → skip
+                $orig = $item['original'];
+                $this->pendingErrorRows[] = [
+                    'row'    => $row,
+                    'errors' => ["Koreksi wilayah ditolak: {$orig['provinsi']} / {$orig['kabupaten']} / {$orig['kecamatan']} / {$orig['kelurahan']}"],
+                ];
+            }
+        }
+
+        // Urutkan semua baris berdasarkan nomor baris
+        $allRows = array_merge(
+            array_map(fn($r) => ['type' => 'valid', 'row' => $r['row'], 'payload' => $r], $this->pendingValidRows),
+            array_map(fn($r) => ['type' => 'error', 'row' => $r['row'], 'payload' => $r], $this->pendingErrorRows),
+        );
+        usort($allRows, fn($a, $b) => $a['row'] <=> $b['row']);
+
+        // Insert ke database & build log
+        foreach ($allRows as $entry) {
+            $row = $entry['row'];
+            if ($entry['type'] === 'valid') {
+                $data = $entry['payload']['data'];
+
+                // Cek duplikat NIK & HP sebelum insert
+                $nikExists = ParticipantModel::withoutTrashed()->where('nik', $data['nik'])->exists();
+                $hpExists  = ParticipantModel::withoutTrashed()->where('no_hp', $data['no_hp'])->exists();
+
+                if ($nikExists) {
+                    $this->importSkipped++;
+                    $this->logImport('error', $row, "Baris {$row}: NIK {$data['nik']} sudah terdaftar");
+                    continue;
+                }
+                if ($hpExists) {
+                    $this->importSkipped++;
+                    $this->logImport('error', $row, "Baris {$row}: No HP {$data['no_hp']} sudah terdaftar");
+                    continue;
+                }
+
+                ParticipantModel::create($data);
+                $this->importSuccess++;
+                $this->logImport('success', $row, "Baris {$row}: {$data['nama']} — berhasil diimpor");
+            } else {
+                $this->importSkipped++;
+                $errors = $entry['payload']['errors'];
+                $this->logImport('error', $row, "Baris {$row}: " . implode('; ', $errors));
+            }
+        }
+
+        $this->logImport('info', 0, "Selesai — {$this->importSuccess} berhasil, {$this->importSkipped} dilewati dari total {$this->importTotal} baris.");
+
+        // Reset state
+        $this->showFuzzyReview  = false;
+        $this->fuzzyReviewItems = [];
+        $this->pendingValidRows = [];
+        $this->pendingErrorRows = [];
+        $this->importDone       = true;
+        $this->importFile       = null;
         $this->dispatch('importFinished', 'participantSaved');
+    }
+
+    /**
+     * Validasi field non-wilayah (nama, nik, no_hp, alamat).
+     * Wilayah divalidasi terpisah via fuzzy matcher.
+     */
+    private function validateNonRegionData(array $data, int $rowNumber): array
+    {
+        $errors = [];
+
+        $nama      = trim($data['nama'] ?? '');
+        $nik       = preg_replace('/\D/', '', $data['nik'] ?? '');
+        $no_hp     = $this->normalizeNoHp(trim($data['no_hp'] ?? ''));
+        $alamat    = trim($data['alamat'] ?? '');
+        $provinsi  = strtolower(trim($data['provinsi'] ?? ''));
+        $kabupaten = strtolower(trim($data['kabupaten'] ?? ''));
+        $kecamatan = strtolower(trim($data['kecamatan'] ?? ''));
+        $kelurahan = strtolower(trim($data['kelurahan'] ?? ''));
+
+        // Validasi Nama
+        if (empty($nama)) {
+            $errors[] = 'Nama kosong';
+        } elseif (strlen($nama) > 255) {
+            $errors[] = 'Nama terlalu panjang (maks 255 karakter)';
+        } elseif (!preg_match("/^[a-zA-Z\s\.\']+$/", $nama)) {
+            $errors[] = 'Nama mengandung karakter tidak valid';
+        }
+
+        // Validasi NIK
+        if (strlen($nik) !== 16) {
+            $errors[] = 'NIK tidak valid (harus 16 digit angka)';
+        }
+
+        // Validasi No HP
+        if (empty($no_hp)) {
+            $errors[] = 'Nomor HP kosong';
+        } elseif (strlen($no_hp) < 10) {
+            $errors[] = 'No HP terlalu pendek (min 10 digit)';
+        } elseif (strlen($no_hp) > 15) {
+            $errors[] = 'No HP terlalu panjang (maks 15 digit)';
+        } elseif (!preg_match('/^(08|628)[0-9]+$/', $no_hp)) {
+            $errors[] = 'No HP bukan format Indonesia (harus diawali 08 atau 628)';
+        }
+
+        // Validasi Alamat
+        if (empty($alamat)) {
+            $errors[] = 'Alamat kosong';
+        } elseif (strlen($alamat) < 5) {
+            $errors[] = 'Alamat terlalu pendek (min 5 karakter)';
+        }
+
+        // Validasi kolom wilayah tidak kosong
+        if (empty($provinsi))  $errors[] = 'Kolom provinsi kosong';
+        if (empty($kabupaten)) $errors[] = 'Kolom kabupaten kosong';
+        if (empty($kecamatan)) $errors[] = 'Kolom kecamatan kosong';
+        if (empty($kelurahan)) $errors[] = 'Kolom kelurahan kosong';
+
+        if (!empty($errors)) {
+            return ['valid' => false, 'errors' => $errors];
+        }
+
+        return [
+            'valid' => true,
+            'data'  => [
+                'nama'       => $nama,
+                'nik'        => $nik,
+                'no_hp'      => $no_hp,
+                'alamat'     => $alamat,
+                'status'     => 'pending',
+                'created_by' => Auth::id(),
+            ],
+        ];
     }
 
     private function resetImportState(): void
     {
-        $this->importLogs = [];
-        $this->importTotal = $this->importSuccess = $this->importSkipped = 0;
-        $this->importDone = $this->importing = false;
+        $this->importLogs       = [];
+        $this->importTotal      = $this->importSuccess = $this->importSkipped = 0;
+        $this->importDone       = $this->importing = false;
+        $this->showFuzzyReview  = false;
+        $this->fuzzyReviewItems = [];
+        $this->pendingValidRows = [];
+        $this->pendingErrorRows = [];
     }
 
     private function logImport(string $type, int $row, string $msg): void
