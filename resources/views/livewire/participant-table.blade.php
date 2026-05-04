@@ -138,13 +138,13 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex flex-col items-center gap-1">
                                 @if($p->status === 'pending' && in_array(auth()->user()->role, ['admin', 'super_admin']))
-                                <select wire:change="updateField('{{ $p->id }}', 'layanan_id', $event.target.value)" class="w-82.5 text-[11px] font-semibold bg-transparent border-none focus:ring-0 p-0 cursor-pointer text-slate-600 hover:text-primary text-center">
+                                <select wire:change="updateField('{{ $p->id }}', 'layanan_id', $event.target.value)" class="text-[11px] font-semibold bg-transparent border-none focus:ring-0 p-0 cursor-pointer text-slate-600 hover:text-primary text-center">
                                     <option value="">-</option>
                                     @foreach($services as $s)
                                     <option value="{{ $s->id }}" {{ $p->layanan_id == $s->id ? 'selected' : '' }}>{{ $s->nama }}</option>
                                     @endforeach
                                 </select>
-                                <select wire:change="updateField('{{ $p->id }}', 'segment_id', $event.target.value)" class="w-82.5 text-[11px] font-semibold bg-transparent border-none focus:ring-0 p-0 cursor-pointer text-slate-600 hover:text-primary text-center">
+                                <select wire:change="updateField('{{ $p->id }}', 'segment_id', $event.target.value)" class="w-40 text-[11px] font-semibold bg-transparent border-none focus:ring-0 p-0 cursor-pointer text-slate-600 hover:text-primary text-center">
                                     <option value="">-</option>
                                     @foreach($segments as $seg)
                                     <option value="{{ $seg->id }}" {{ $p->segment_id == $seg->id ? 'selected' : '' }}>{{ $seg->nama }}</option>

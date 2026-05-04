@@ -46,7 +46,23 @@ class ParticipantTable extends Component
             . "Segment: " . ($p->segment->nama ?? '-') . "\n\n"
             . "Jika data sudah sesuai, mohon balas dengan 'YA' agar dapat segera kami proses. Terima kasih.";
 
-        WhatsAppService::send($p->no_hp, $message);
+        $response = WhatsAppService::send($p->no_hp, $message);
+
+        $data = $response->json() ?? [];
+
+        if (!$response->successful() || ($data['status'] ?? false) === false) {
+            $errorMessage = $data['reason']
+                ?? $data['detail']
+                ?? 'Gagal kirim WhatsApp';
+
+            $this->addError('msg', $errorMessage);
+            return;
+        }
+
+        if (($data['process'] ?? '') === 'pending') {
+            $this->dispatch('notify', message: 'Pesan sedang dalam antrian (pending)');
+            return;
+        }
 
         $this->dispatch('notify', message: 'WA berhasil dikirim');
     }
@@ -126,15 +142,16 @@ class ParticipantTable extends Component
         ]);
 
 
-        $message = "Halo {$participant->nama},\n\n"
-            . "Pengajuan BPJS Anda telah SELESAI diproses.\n\n"
-            . "Layanan: {$participant->service->nama}\n"
-            . "Segment: {$participant->segment->nama}\n\n"
-            . "Terima kasih.";
+        // $message = "Halo {$participant->nama},\n\n"
+        //     . "Pengajuan BPJS Anda telah SELESAI diproses.\n\n"
+        //     . "Layanan: {$participant->service->nama}\n"
+        //     . "Segment: {$participant->segment->nama}\n\n"
+        //     . "Terima kasih.";
 
-        WhatsAppService::send($participant->no_hp, $message);
+        // WhatsAppService::send($participant->no_hp, $message);
 
-        $this->dispatch('notify', message: 'Diproses & WA terkirim');
+        // $this->dispatch('notify', message: 'Diproses & WA terkirim');
+        $this->dispatch('notify', message: 'Selesai Diproses');
     }
 
 
@@ -182,7 +199,7 @@ class ParticipantTable extends Component
             'Layanan'        => $p->service->nama ?? '-',
             'Segment'        => $p->segment->nama ?? '-',
             'Status'         => ucfirst($p->status),
-            'Tanggal Selesai'=> $p->tanggal_selesai?->format('d/m/Y') ?? '-',
+            'Tanggal Selesai' => $p->tanggal_selesai?->format('d/m/Y') ?? '-',
             'Diinput Oleh'   => $p->creator->nama ?? '-',
             'Diproses Oleh'   => $p->processor->nama ?? '-',
         ]);

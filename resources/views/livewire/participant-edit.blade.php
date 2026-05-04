@@ -105,15 +105,14 @@
                 </div>
 
                 {{-- ALAMAT --}}
-                <div class="space-y-2 md:col-span-2">
+                <div class="space-y-2">
                     <label class="text-[10px] lg:text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Alamat Domisili</label>
                     <div class="relative group">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
                             <i class="fas fa-map-marker-alt text-sm"></i>
                         </div>
                         <input wire:model="alamat" type="text" placeholder="Jl. Raya No. 123, RT/RW..."
-                            @if($isLocked) disabled @endif
-                            class="block w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all @if($isLocked) opacity-60 cursor-not-allowed bg-slate-50 @endif">
+                            class="block w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all">
                     </div>
                 </div>
             </div>

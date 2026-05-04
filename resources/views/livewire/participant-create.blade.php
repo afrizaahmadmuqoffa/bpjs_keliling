@@ -75,7 +75,7 @@
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
                             <i class="fas fa-user text-sm"></i>
                         </div>
-                        <input wire:model="nama" type="text" placeholder="Contoh: Budi Santoso"
+                        <input wire:model="nama" type="text" placeholder="Contoh: Desta Oli Samping"
                             oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')"
                             class="block w-full pl-11 pr-4 py-3 bg-white border @error('nama') border-red-400 @else border-slate-200 @enderror rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all">
                     </div>
@@ -111,7 +111,7 @@
                 </div>
 
                 {{-- ALAMAT --}}
-                <div class="space-y-2 md:col-span-2">
+                <div class="space-y-2">
                     <label class="text-[10px] lg:text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Alamat Domisili</label>
                     <div class="relative group">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">
@@ -478,15 +478,15 @@
                             </div>
                             @endif
                             @forelse ($importLogs as $log)
-                                @if ($log['type'] === 'success')
-                                <div class="text-green-400"><span class="text-slate-500 select-none">›</span><span class="text-green-500">✓</span> {{ $log['msg'] }}</div>
-                                @elseif ($log['type'] === 'error')
-                                <div class="text-red-400"><span class="text-slate-500 select-none">›</span><span class="text-red-500">✗</span> {{ $log['msg'] }}</div>
-                                @else
-                                <div class="text-blue-400 border-t border-slate-700 pt-1 mt-1"><span class="text-slate-500 select-none">›</span><span class="text-blue-400">ℹ</span> {{ $log['msg'] }}</div>
-                                @endif
+                            @if ($log['type'] === 'success')
+                            <div class="text-green-400"><span class="text-slate-500 select-none">›</span><span class="text-green-500">✓</span> {{ $log['msg'] }}</div>
+                            @elseif ($log['type'] === 'error')
+                            <div class="text-red-400"><span class="text-slate-500 select-none">›</span><span class="text-red-500">✗</span> {{ $log['msg'] }}</div>
+                            @else
+                            <div class="text-blue-400 border-t border-slate-700 pt-1 mt-1"><span class="text-slate-500 select-none">›</span><span class="text-blue-400">ℹ</span> {{ $log['msg'] }}</div>
+                            @endif
                             @empty
-                                @if (!$importing)<div class="text-slate-500 italic">Log akan muncul di sini...</div>@endif
+                            @if (!$importing)<div class="text-slate-500 italic">Log akan muncul di sini...</div>@endif
                             @endforelse
                         </div>
                     </div>
@@ -536,10 +536,20 @@
 {{-- CSS Animation for modal slide-up on mobile --}}
 <style>
     @keyframes slide-up {
-        from { transform: translateY(100%); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
+        from {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
     }
+
     @media (max-width: 1023px) {
-        .animate-slide-up { animation: slide-up 0.25s ease-out; }
+        .animate-slide-up {
+            animation: slide-up 0.25s ease-out;
+        }
     }
 </style>

@@ -11,13 +11,14 @@ class WhatsAppService
         $phone = self::formatPhone($phone);
 
         
-        Http::withHeaders([
-            'Authorization' => env('WABLAS_TOKEN'),
-        ])->post('https://sby.wablas.com/api/send-message', [
-            'phone'   => $phone,
+        return Http::withHeaders([
+            'Authorization' => env('FONNTE_TOKEN'),
+        ])
+        ->asForm()
+        ->post(env('FONNTE_URL'), [
+            'target' => $phone,
             'message' => $message,
         ]);
-
     }
 
     private static function formatPhone($phone)

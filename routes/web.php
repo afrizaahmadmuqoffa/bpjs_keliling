@@ -11,6 +11,10 @@ use App\Http\Controllers\ParticipantController;
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    
+    Route::get('/forgot-password', function () {
+        return view('auth.forgot-password');
+    })->name('password.request');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])

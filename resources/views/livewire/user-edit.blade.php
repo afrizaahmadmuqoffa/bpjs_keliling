@@ -206,7 +206,7 @@
                         wire:loading.attr="disabled"
                         class="bg-primary hover:bg-blue-900 text-white px-8 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95 flex items-center gap-2">
                         <span wire:loading.remove wire:target="save">
-                            <i class="fas fa-save"></i> Simpan Perubahan
+                            <i class="fas fa-save"></i> <span class="hidden sm:inline">Simpan Perubahan</span><span class="sm:hidden">Simpan</span>
                         </span>
                         <span wire:loading wire:target="save">
                             <i class="fas fa-spinner fa-spin"></i> Menyimpan...

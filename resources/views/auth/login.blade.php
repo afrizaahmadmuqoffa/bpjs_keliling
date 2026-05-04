@@ -78,6 +78,13 @@
                         <i class="fas fa-sign-in-alt mt-0.5 mr-2 text-xs sm:text-sm"></i> Masuk ke Dashboard
                     </button>
                 </div>
+
+                {{-- Forgot Password Link --}}
+                <div class="text-center">
+                    <a href="{{ route('password.request') }}" class="text-xs sm:text-sm text-primary hover:text-blue-900 font-medium transition-colors">
+                        <i class="fas fa-key mr-1"></i> Lupa Password?
+                    </a>
+                </div>
             </form>
 
             {{-- Help Link --}}
@@ -88,10 +95,9 @@
                 </p>
             </div>
         </div>
-
         {{-- Footer --}}
         <p class="mt-4 sm:mt-6 text-center text-[10px] sm:text-xs text-slate-400 px-4">
-            &copy; 2026 BPJS Keliling.<br class="sm:hidden">
+            &copy; {{ date('Y') }} BPJS Keliling.<br class="sm:hidden">
             <span class="hidden sm:inline"> </span>
             Sistem Informasi Pelayanan Terpadu.
         </p>

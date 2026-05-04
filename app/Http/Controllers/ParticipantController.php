@@ -3,13 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ParticipantModel;
-use App\Models\RegionModel;
-use App\Models\ServiceModel;
-use App\Models\SegmentModel;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Rap2hpoutre\FastExcel\FastExcel;
-use Illuminate\Support\Facades\DB;
 
 class ParticipantController extends Controller
 {
